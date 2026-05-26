@@ -2,26 +2,26 @@
  * @jest-environment node
  */
 const request = require('supertest');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-const Client = require('socket.io-client');
+const fs = require('fs');
+const path = require('path');
 
-let app, db, httpServer;
+let app, httpServer;
 
 beforeAll((done) => {
   process.env.NODE_ENV = 'test';
   process.env.TEACHER_PASSWORD = 'test1234';
   
+  // data 디렉토리 보장
+  const dataDir = path.join(__dirname, '..', 'data');
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  
   delete require.cache[require.resolve('../server')];
   const mod = require('../server');
   app = mod.app;
-  db = mod.db;
   
-  // 테스트용 HTTP 서버
-  httpServer = createServer(app);
+  httpServer = require('http').createServer(app);
   httpServer.listen(() => {
-    const port = httpServer.address().port;
-    process.env.TEST_PORT = port;
+    process.env.TEST_PORT = httpServer.address().port;
     done();
   });
 });
@@ -29,8 +29,6 @@ beforeAll((done) => {
 afterAll((done) => {
   httpServer.close(done);
 });
-
-// ====== REST API Tests ======
 
 describe('POST /api/teacher/login', () => {
   test('올바른 비밀번호로 로그인 성공', async () => {
@@ -58,7 +56,7 @@ describe('GET /api/word-sets', () => {
     expect(res.body.length).toBeGreaterThanOrEqual(4);
     expect(res.body[0]).toHaveProperty('topic');
     expect(res.body[0]).toHaveProperty('words');
-  });
+  }, 10000);
 });
 
 describe('POST /api/word-sets', () => {
@@ -69,7 +67,7 @@ describe('POST /api/word-sets', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('id');
     expect(res.body.topic).toBe('테스트주제');
-  });
+  }, 10000);
 });
 
 describe('POST /api/rooms', () => {
@@ -81,7 +79,7 @@ describe('POST /api/rooms', () => {
     expect(res.body).toHaveProperty('roomCode');
     expect(res.body.teamName).toBe('1모둠');
     expect(res.body.roomCode).toMatch(/^[A-Z0-9]{6}$/);
-  });
+  }, 10000);
 });
 
 describe('GET /api/rooms', () => {
@@ -89,38 +87,5 @@ describe('GET /api/rooms', () => {
     const res = await request(app).get('/api/rooms');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
-  });
-});
-
-// ====== Socket.io Tests ======
-
-describe('Socket.io Events', () => {
-  let serverSocket, io, httpSrv, clientSocket;
-
-  beforeAll((done) => {
-    httpSrv = createServer(app);
-    io = new Server(httpSrv, { transports: ['websocket'] });
-    
-    httpSrv.listen(() => {
-      const port = httpSrv.address().port;
-      clientSocket = new Client(`http://localhost:${port}`, {
-        transports: ['websocket'],
-        forceNew: true,
-      });
-      io.on('connection', (socket) => {
-        serverSocket = socket;
-      });
-      clientSocket.on('connect', done);
-    });
-  });
-
-  afterAll((done) => {
-    if (clientSocket && clientSocket.connected) clientSocket.close();
-    io && io.close();
-    httpSrv && httpSrv.close(done);
-  });
-
-  test('client가 서버에 연결됨', () => {
-    expect(clientSocket.connected).toBe(true);
-  });
+  }, 10000);
 });

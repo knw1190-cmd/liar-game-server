@@ -17,8 +17,18 @@ const io = socketIo(server, {
   }
 });
 
+const fs = require('fs');
+const path = require('path');
+
+// data 디렉토리 확인
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
 // SQLite DB 연결
-const db = new sqlite3.Database('./data/liar-game.db', (err) => {
+const dbPath = path.join(dataDir, 'liar-game.db');
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Database connection error:', err);
   } else {
@@ -142,8 +152,8 @@ io.on('connection', (socket) => {
 // REST API
 app.use(express.json());
 
-// 교사 비밀번호 (환경변수로 설정 가능, 기본값 teacher1234)
-const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || 'test';
+// 교사 비밀번호 (환경변수로 설정, 기본값은 랜덤 UUID 생성)
+const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || require('crypto').randomBytes(6).toString('hex');
 
 // 교사 로그인
 app.post('/api/teacher/login', (req, res) => {
