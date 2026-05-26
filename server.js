@@ -18,7 +18,7 @@ const io = socketIo(server, {
 });
 
 // SQLite DB 연결
-const db = new sqlite3.Database('./liar-game.db', (err) => {
+const db = new sqlite3.Database('./data/liar-game.db', (err) => {
   if (err) {
     console.error('Database connection error:', err);
   } else {
