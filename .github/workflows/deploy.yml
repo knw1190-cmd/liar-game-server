@@ -1,0 +1,40 @@
+name: Build & Deploy Liar Game
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./liar-game-server/Dockerfile
+          load: true
+          tags: liar-game:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Oracle
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: 158.180.89.186
+          username: ubuntu
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ~/liar-game-server
+            git pull https://${{ secrets.GH_TOKEN }}@github.com/knw1190-cmd/liar-game-server.git
+            cd ~
+            docker compose build liar_app
+            docker compose up -d liar_app
+            docker image prune -f
