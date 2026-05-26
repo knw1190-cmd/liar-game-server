@@ -218,8 +218,12 @@ app.delete('/api/rooms/:code', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log('Liar Game server running on port ' + PORT);
-});
 
-module.exports = { io, db };
+// 테스트 환경이 아닐 때만 서버 시작
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, () => {
+    console.log('Liar Game server running on port ' + PORT);
+  });
+}
+
+module.exports = { app, server, io, db };
